@@ -1,7 +1,9 @@
 ## tmux sessionizer
+
 its a script that does everything awesome at all times
 
 ## Usage
+
 ```bash
 tmux-sessionizer [<partial name of session>]
 ```
