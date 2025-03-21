@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 # tmux-sessionizer: Intelligent tmux session manager
 # Usage: tmux-sessionizer [directory]
+#
+# Compatible with both bash and zsh
+
+# Detect shell type
+if [ -n "$ZSH_VERSION" ]; then
+  SHELL_TYPE="zsh"
+elif [ -n "$BASH_VERSION" ]; then
+  SHELL_TYPE="bash"
+else
+  SHELL_TYPE="other"
+fi
 
 set -euo pipefail
 
@@ -24,13 +35,18 @@ log() {
     local color=""
 
     case "$level" in
-    INFO) color="$GREEN" ;;
-    WARN) color="$YELLOW" ;;
-    ERROR) color="$RED" ;;
-    DEBUG) color="$CYAN" ;;
+        INFO) color="$GREEN" ;;
+        WARN) color="$YELLOW" ;;
+        ERROR) color="$RED" ;;
+        DEBUG) color="$CYAN" ;;
     esac
 
-    echo -e "${color}[$level]${RESET} $message" >&2
+    # Compatible with both bash and zsh
+    if [ "$SHELL_TYPE" = "zsh" ]; then
+        print -P "${color}[$level]${RESET} $message" >&2
+    else
+        printf "${color}[%s]${RESET} %s\n" "$level" "$message" >&2
+    fi
 }
 
 # Load configuration if exists
@@ -46,12 +62,14 @@ load_config() {
 get_search_directories() {
     # If SEARCH_DIRS is defined in config, use it
     if [[ -n "${SEARCH_DIRS:-}" ]]; then
-        echo "${SEARCH_DIRS[@]}"
+        for dir in "${SEARCH_DIRS[@]}"; do
+            echo "$dir"
+        done
         return
     fi
 
     # Default search directories
-    local search_dirs=(
+    local default_dirs=(
         "$HOME/dev"
         "$HOME/personal"
         "$HOME/projects"
@@ -60,13 +78,13 @@ get_search_directories() {
 
     # Add XDG_CONFIG_HOME if it exists
     if [[ -n "${XDG_CONFIG_HOME:-}" && -d "$XDG_CONFIG_HOME" ]]; then
-        search_dirs+=("$XDG_CONFIG_HOME")
+        default_dirs+=("$XDG_CONFIG_HOME")
     elif [[ -d "$HOME/.config" ]]; then
-        search_dirs+=("$HOME/.config")
+        default_dirs+=("$HOME/.config")
     fi
 
     # Return all valid directories
-    for dir in "${search_dirs[@]}"; do
+    for dir in "${default_dirs[@]}"; do
         if [[ -d "$dir" ]]; then
             echo "$dir"
         fi
@@ -139,66 +157,66 @@ setup_session_layout() {
 
     # Create standard windows based on project type
     case "$project_type" in
-    node)
-        # Node.js project
-        tmux new-window -t "$session" -n "shell"
-        tmux new-window -t "$session" -n "server"
-        tmux new-window -t "$session" -n "test"
+        node)
+            # Node.js project
+            tmux new-window -t "$session" -n "shell"
+            tmux new-window -t "$session" -n "server"
+            tmux new-window -t "$session" -n "test"
 
-        # Set up commands in each window
-        tmux send-keys -t "$session:shell" "cd $dir && clear" C-m
-        tmux send-keys -t "$session:server" "cd $dir && clear" C-m
-        tmux send-keys -t "$session:test" "cd $dir && clear" C-m
-        ;;
-    go)
-        # Go project
-        tmux new-window -t "$session" -n "shell"
-        tmux new-window -t "$session" -n "run"
-        tmux new-window -t "$session" -n "test"
+            # Set up commands in each window
+            tmux send-keys -t "$session:shell" "cd $dir && clear" C-m
+            tmux send-keys -t "$session:server" "cd $dir && clear" C-m
+            tmux send-keys -t "$session:test" "cd $dir && clear" C-m
+            ;;
+        go)
+            # Go project
+            tmux new-window -t "$session" -n "shell"
+            tmux new-window -t "$session" -n "run"
+            tmux new-window -t "$session" -n "test"
 
-        # Set up commands in each window
-        tmux send-keys -t "$session:shell" "cd $dir && clear" C-m
-        tmux send-keys -t "$session:run" "cd $dir && clear" C-m
-        tmux send-keys -t "$session:test" "cd $dir && clear" C-m
-        ;;
-    rust)
-        # Rust project
-        tmux new-window -t "$session" -n "shell"
-        tmux new-window -t "$session" -n "build"
-        tmux new-window -t "$session" -n "test"
+            # Set up commands in each window
+            tmux send-keys -t "$session:shell" "cd $dir && clear" C-m
+            tmux send-keys -t "$session:run" "cd $dir && clear" C-m
+            tmux send-keys -t "$session:test" "cd $dir && clear" C-m
+            ;;
+        rust)
+            # Rust project
+            tmux new-window -t "$session" -n "shell"
+            tmux new-window -t "$session" -n "build"
+            tmux new-window -t "$session" -n "test"
 
-        # Set up commands in each window
-        tmux send-keys -t "$session:shell" "cd $dir && clear" C-m
-        tmux send-keys -t "$session:build" "cd $dir && clear" C-m
-        tmux send-keys -t "$session:test" "cd $dir && clear" C-m
-        ;;
-    php)
-        # PHP project
-        tmux new-window -t "$session" -n "shell"
-        tmux new-window -t "$session" -n "server"
-        tmux new-window -t "$session" -n "test"
+            # Set up commands in each window
+            tmux send-keys -t "$session:shell" "cd $dir && clear" C-m
+            tmux send-keys -t "$session:build" "cd $dir && clear" C-m
+            tmux send-keys -t "$session:test" "cd $dir && clear" C-m
+            ;;
+        php)
+            # PHP project
+            tmux new-window -t "$session" -n "shell"
+            tmux new-window -t "$session" -n "server"
+            tmux new-window -t "$session" -n "test"
 
-        # Set up commands in each window
-        tmux send-keys -t "$session:shell" "cd $dir && clear" C-m
-        tmux send-keys -t "$session:server" "cd $dir && clear" C-m
-        tmux send-keys -t "$session:test" "cd $dir && clear" C-m
-        ;;
-    python)
-        # Python project
-        tmux new-window -t "$session" -n "shell"
-        tmux new-window -t "$session" -n "run"
-        tmux new-window -t "$session" -n "test"
+            # Set up commands in each window
+            tmux send-keys -t "$session:shell" "cd $dir && clear" C-m
+            tmux send-keys -t "$session:server" "cd $dir && clear" C-m
+            tmux send-keys -t "$session:test" "cd $dir && clear" C-m
+            ;;
+        python)
+            # Python project
+            tmux new-window -t "$session" -n "shell"
+            tmux new-window -t "$session" -n "run"
+            tmux new-window -t "$session" -n "test"
 
-        # Set up commands in each window
-        tmux send-keys -t "$session:shell" "cd $dir && clear" C-m
-        tmux send-keys -t "$session:run" "cd $dir && clear" C-m
-        tmux send-keys -t "$session:test" "cd $dir && clear" C-m
-        ;;
-    *)
-        # Generic project
-        tmux new-window -t "$session" -n "shell"
-        tmux send-keys -t "$session:shell" "cd $dir && clear" C-m
-        ;;
+            # Set up commands in each window
+            tmux send-keys -t "$session:shell" "cd $dir && clear" C-m
+            tmux send-keys -t "$session:run" "cd $dir && clear" C-m
+            tmux send-keys -t "$session:test" "cd $dir && clear" C-m
+            ;;
+        *)
+            # Generic project
+            tmux new-window -t "$session" -n "shell"
+            tmux send-keys -t "$session:shell" "cd $dir && clear" C-m
+            ;;
     esac
 
     # Return to edit window and start editor
@@ -265,8 +283,10 @@ main() {
         fi
 
         # Get search directories
-        local search_dirs
-        mapfile -t search_dirs < <(get_search_directories)
+        local search_dirs=()
+        while IFS= read -r line; do
+            search_dirs+=("$line")
+        done < <(get_search_directories)
 
         # Use fd if available (faster), otherwise fall back to find
         local find_command="$DEFAULT_FIND_COMMAND"
