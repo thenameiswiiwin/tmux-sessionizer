@@ -173,3 +173,7 @@ If sessions aren't being created correctly:
 1. Check tmux is installed: `tmux -V`
 2. Verify fzf is installed: `fzf --version`
 3. Run with more debug output: `TMUX_SESSIONIZER_DEBUG=1 tmux-sessionizer`
+
+### Credits
+
+Theprimeagen
