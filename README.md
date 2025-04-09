@@ -1,175 +1,214 @@
-# TMUX Sessionizer
+# tmux-sessionizer
 
-A powerful, intelligent tmux session manager that streamlines your development workflow by quickly creating, switching between, and managing project-specific tmux sessions.
+A lightning-fast tmux session manager that simplifies project workflows with automatic environment configuration.
 
-## Features
+## Overview
 
-- **Intelligent Project Detection**: Automatically detects project types (Node.js, Go, Rust, PHP, Python, etc.) and sets up appropriate window layouts
-- **Smart Session Switching**: Seamlessly switch between or create new sessions
-- **Custom Session Templating**: Support for project-specific initialization through `.tmux-sessionizer` files
-- **Fuzzy Directory Finding**: Quickly navigate your project directories with `fzf` integration
-- **Project-Specific Layouts**: Different window arrangements based on the detected project type
-- **Configurable Search Paths**: Easily customize which directories to include in your search
-- **Cross-Platform Compatibility**: Works on macOS, Linux, and WSL environments
-- **Performance Optimized**: Uses faster tools like `fd` when available
-- **Comprehensive Logging**: Clear, color-coded status messages
+`tmux-sessionizer` is a powerful Bash utility designed to streamline tmux workflow by:
+
+- Quickly switching between projects
+- Automatically creating consistent session layouts
+- Providing project-specific environment configuration
+- Eliminating repetitive setup tasks
+
+The tool consists of two components:
+
+1. `tmux-sessionizer` - The main script for creating and switching sessions
+2. `.tmux-sessionizer` - A project-specific configuration script
+
+## Prerequisites
+
+- tmux 3.0+
+- Bash 4.0+ or Zsh
+- fzf (for interactive directory selection)
+- fd (optional, for faster directory scanning)
 
 ## Installation
 
-### Requirements
-
-- tmux (2.1+)
-- fzf (for directory selection)
-- bash (4.0+)
-- fd (optional, for faster directory finding)
-
-### Installation Steps
-
-1. Download the script:
+### 1. Install tmux-sessionizer
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/username/tmux-sessionizer/main/tmux-sessionizer -o /tmp/tmux-sessionizer
-```
-
-2. Install it to a location in your `PATH`:
-
-```bash
-# Create directory if it doesn't exist
+# Create bin directory if it doesn't exist
 mkdir -p ~/.local/bin
 
-# Move and make executable
-mv /tmp/tmux-sessionizer ~/.local/bin/
+# Download the script
+curl -o ~/.local/bin/tmux-sessionizer https://raw.githubusercontent.com/thenameiswiiwin/tmux-sessionizer/main/tmux-sessionizer
+
+# Make it executable
 chmod +x ~/.local/bin/tmux-sessionizer
+
+# Ensure ~/.local/bin is in your PATH
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc  # or ~/.bashrc
 ```
 
-3. Make sure `~/.local/bin` is in your PATH:
+### 2. Install .tmux-sessionizer
 
 ```bash
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-# Or for zsh users
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+# Download the configuration script
+curl -o ~/.tmux-sessionizer https://raw.githubusercontent.com/thenameiswiiwin/dev-env/develop/.tmux-sessionizer
+
+# Make it executable
+chmod +x ~/.tmux-sessionizer
 ```
 
-## Usage
+### 3. Set up keyboard shortcut
 
-### Basic Usage
-
-Launch tmux-sessionizer without arguments to select a project directory using fzf:
+Add to your `.zshrc` or `.bashrc`:
 
 ```bash
-tmux-sessionizer
+# Add Ctrl+f shortcut for tmux-sessionizer
+if command -v tmux-sessionizer &>/dev/null; then
+    bindkey -s "^f" "tmux-sessionizer\n"  # Zsh
+    # OR
+    # bind -x '"\C-f":"tmux-sessionizer"'  # Bash
+fi
 ```
 
-This will:
+## Basic Usage
 
-1. Search your project directories
-2. Display a fuzzy-finder for selection
-3. Create or switch to a tmux session named after the selected directory
+### Starting a Session
 
-### Direct Session Creation
+- **Interactive**: Press `Ctrl+f` or run `tmux-sessionizer` with no arguments
+- **Direct path**: `tmux-sessionizer ~/dev/myproject`
 
-Specify a directory path to immediately create/switch to that session:
+### During a Session
 
-```bash
-tmux-sessionizer ~/dev/my-awesome-project
-```
+- **Switch projects**: Press `prefix + f` (typically `Ctrl+a f`) within tmux
+- **Create windows**: Standard tmux commands after session is created
 
-### Keyboard Shortcut (Recommended)
+## Session Creation Process
 
-Add a keyboard shortcut to your shell configuration for quick access:
+1. **Directory Selection**: Choose a project directory
+2. **Session Creation**: Creates tmux session named after directory
+3. **Layout Configuration**: Automatically sets up project-specific windows
+4. **Environment Hydration**: Sources `.tmux-sessionizer` for custom setup
 
-For Bash (add to `~/.bashrc`):
+## Project-Specific Configuration
 
-```bash
-bind -x '"\C-f":"tmux-sessionizer"'
-```
-
-For Zsh (add to `~/.zshrc`):
-
-```bash
-bindkey -s '^f' 'tmux-sessionizer\n'
-```
-
-Now press `Ctrl+f` anytime to launch tmux-sessionizer.
-
-## Configuration
-
-### Custom Search Directories
-
-Create a configuration file at `~/.tmux-sessionizer-config`:
-
-```bash
-# Define custom search directories
-SEARCH_DIRS=(
-  "$HOME/dev"
-  "$HOME/work"
-  "$HOME/personal"
-  "$HOME/clients"
-)
-
-# Customize search depth (default is 3)
-SEARCH_DEPTH=4
-```
-
-### Project-Specific Initialization
-
-Create a `.tmux-sessionizer` file in your project directory with custom commands:
+Create a `.tmux-sessionizer` file in your project root for custom setup:
 
 ```bash
 #!/usr/bin/env bash
-# Example .tmux-sessionizer file for a web project
 
-# Rename the current window
-tmux rename-window -t 1 "editor"
+# Project-specific setup goes here
+echo "Setting up custom project environment..."
 
-# Create additional windows with specific layouts
-tmux new-window -t "$session_name" -n "server"
-tmux send-keys -t "$session_name:server" "cd $PWD && npm run dev" C-m
-
-tmux new-window -t "$session_name" -n "test"
-tmux send-keys -t "$session_name:test" "cd $PWD && npm run test:watch" C-m
-
-# Create a window with split panes
-tmux new-window -t "$session_name" -n "logs"
-tmux split-window -v
-tmux send-keys -t "$session_name:logs.0" "cd $PWD && tail -f logs/app.log" C-m
-tmux send-keys -t "$session_name:logs.1" "cd $PWD && tail -f logs/error.log" C-m
-
-# Return to editor window
-tmux select-window -t "$session_name:editor"
-tmux send-keys "vim ." C-m
+# Add commands to run in the session
+# Example: Starting development server in a window named "server"
+if tmux has-session -t "$(tmux display-message -p '#S'):server" 2>/dev/null; then
+    tmux send-keys -t "$(tmux display-message -p '#S'):server" "npm run dev" C-m
+fi
 ```
 
-### Global Default Initialization
+## Project Type Detection
 
-If no project-specific file exists, the script will use `~/.tmux-sessionizer` as a fallback.
+The `.tmux-sessionizer` script automatically detects project types and creates appropriate window layouts:
 
-## Default Project Layouts
+| Project Type | Detection Method | Windows Created           |
+| ------------ | ---------------- | ------------------------- |
+| Node.js      | package.json     | edit, shell, server, test |
+| Go           | go.mod           | edit, shell, run, test    |
+| Rust         | Cargo.toml       | edit, shell, build, test  |
+| PHP          | composer.json    | edit, shell, server, test |
+| Python       | requirements.txt | edit, shell, run, test    |
+| Generic      | (fallback)       | edit, shell               |
 
-The script automatically detects project types and sets up appropriate window layouts:
+## Advanced Features
 
-| Project Type | Windows Created                   |
-| ------------ | --------------------------------- |
-| Node.js      | `edit`, `shell`, `server`, `test` |
-| Go           | `edit`, `shell`, `run`, `test`    |
-| Rust         | `edit`, `shell`, `build`, `test`  |
-| PHP          | `edit`, `shell`, `server`, `test` |
-| Python       | `edit`, `shell`, `run`, `test`    |
-| Generic      | `edit`, `shell`                   |
+### Window Management
+
+The `.tmux-sessionizer` script provides several helper functions:
+
+- **window_exists**: Check if a window exists in a session
+- **create_window_if_missing**: Create a window if it doesn't exist
+- **send_command**: Send a command to a specific window
+
+### Custom Project Layouts
+
+You can create project-specific layouts by modifying the `.tmux-sessionizer` file:
+
+```bash
+#!/usr/bin/env bash
+
+# Skip for home directory
+if [[ "$PWD" == "$HOME" ]]; then
+  return 0
+fi
+
+# Create a custom layout
+session_name=$(tmux display-message -p '#S')
+
+# Create windows
+tmux new-window -t "$session_name" -n "database"
+tmux new-window -t "$session_name" -n "logs"
+
+# Set up commands
+tmux send-keys -t "$session_name:database" "docker-compose up -d db" C-m
+tmux send-keys -t "$session_name:logs" "tail -f logs/development.log" C-m
+
+# Return to edit window
+tmux select-window -t "$session_name:edit"
+```
+
+### Theme Integration
+
+The `.tmux-sessionizer` script respects your tmux theme settings (dark/light mode). To toggle themes, press `prefix + T`.
 
 ## Troubleshooting
 
-### Command Not Found
+### Common Issues
 
-If you get `command not found: tmux-sessionizer`, make sure:
+**Issue**: tmux-sessionizer not found
+**Solution**: Ensure ~/.local/bin is in your PATH and the script is executable
 
-1. The script is executable: `chmod +x ~/.local/bin/tmux-sessionizer`
-2. The location is in your PATH: `echo $PATH | grep -q "$HOME/.local/bin" && echo "In PATH" || echo "Not in PATH"`
+**Issue**: Session not created
+**Solution**: Check for error messages during session creation
 
-### No Sessions Created
+**Issue**: Windows not being created
+**Solution**: Verify that tmux is properly installed and the session name is valid
 
-If sessions aren't being created correctly:
+**Issue**: Custom configuration not being loaded
+**Solution**: Check that `.tmux-sessionizer` is executable and contains valid Bash syntax
 
-1. Check tmux is installed: `tmux -V`
-2. Verify fzf is installed: `fzf --version`
-3. Run with more debug output: `TMUX_SESSIONIZER_DEBUG=1 tmux-sessionizer`
+## Performance Optimization
+
+For faster operation:
+
+1. Install `fd` for faster directory scanning
+2. Minimize file operations in your `.tmux-sessionizer` file
+3. Use efficient window creation patterns
+4. Avoid unnecessary commands in the script
+
+## Customization Examples
+
+### Custom Search Paths
+
+Modify the `tmux-sessionizer` script to search different directories:
+
+```bash
+# Find in custom locations
+selected=$(find ~/work ~/clients ~/experiments -mindepth 1 -maxdepth 1 -type d | fzf)
+```
+
+### Project Types
+
+Add support for additional project types in `.tmux-sessionizer`:
+
+```bash
+# Laravel project
+if [[ -f "$git_root/artisan" ]]; then
+  echo "Setting up Laravel project environment"
+  setup_project_windows "$session_name" "$git_root" "shell" "artisan" "routes" "test"
+fi
+```
+
+## Tips & Tricks
+
+1. **Fast Project Switching**: Use `Ctrl+f` outside tmux or `prefix + f` inside
+2. **Quick Command Execution**: Use tmux send-keys for automating common tasks
+3. **Multiple Monitors**: Create separate sessions for different displays
+4. **Session Persistence**: tmux sessions remain after disconnect; reattach later
+
+## Credits
+
+- Original concept by ThePrimeagen
